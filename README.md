@@ -1,2 +1,2 @@
 # Google Scholar university members
- How to scrape university members from google scholar
+ How to scrape university members from google scholar with python
