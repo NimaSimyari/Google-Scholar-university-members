@@ -1,0 +1,64 @@
+# Auto detect text files and perform LF normalization
+import sqlite3
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from bs4 import BeautifulSoup
+​
+
+chromedriver_path = '/path/to/chromedriver'
+​
+chrome_options = Options()
+chrome_options.add_argument('--headless')  
+chrome_options.add_argument('--disable-gpu')
+chrome_options.add_argument('--window-size=1200x600')
+​
+driver = webdriver.Chrome()
+​
+# WEB ADDRESS ENTER THE GOOGLE SCHOLAR ADDRESS
+url = 'https://scholar.google.com/citations?view_op=view_org&org=14262926254231240007&hl=en&oi=io'
+driver.get(url)
+​
+#CREATE DATABASE WITH SQL
+conn = sqlite3.connect('YORK_UNIVERSITY1.db')
+cursor = conn.cursor()
+​
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS scholars (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        position TEXT,
+        principle TEXT
+    )
+''')
+​
+while True:
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+​
+    #   FIND DATA, IN THIS STAGE I JUST NEED NAME OF UNIVERSITY MEMBERS, THEIR POSITIONS AND THEIR RESEARCH INTERESTS
+    names = soup.find_all('h3', class_='gs_ai_name')
+    positions = soup.find_all('div', class_='gs_ai_aff')
+    principles = soup.find_all('div', class_='gs_ai_int')
+​
+    # SAVE DATA IN SQL
+    for name, position, principle in zip(names, positions, principles):
+        name_text = name.find('a').text.strip()
+        position_text = position.text.strip()
+        principle_text = principle.text.strip()
+​
+        cursor.execute('''
+            INSERT INTO scholars (name, position, principle) VALUES (?, ?, ?)
+        ''', (name_text, position_text, principle_text))
+​
+    conn.commit()
+​
+    # AT THE END OF THE EACH PAGE THERE IS A SHOW MORE BUTTON AND WE NEED TO CLICK ON IT IN ORDER TO GO NEXT PAGE AND GET THE DATA OF THE NEXT PAGE
+    next_button = driver.find_element(By.XPATH, "//button[contains(@class, 'gs_btnPR')]")
+    if next_button:
+        next_button.click()
+    else:
+        break
+​
+driver.quit()
+conn.close()
+​
